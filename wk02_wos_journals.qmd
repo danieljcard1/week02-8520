@@ -1,0 +1,264 @@
+---
+title: "Week 2: Exploring TC journals"
+---
+
+## Install packages and read in data
+
+Our source data is split between two CSV files, one for the journal "Technical Communication Quarterly" and one for "Technical Communication."
+
+```{r}
+# install and load packages
+
+#install.packages("tidyverse")
+library(tidyverse)
+library(readr)
+
+# read in both csv files
+tcq_data_raw <- read_csv("data/tcq_wos_data.csv")
+tc_data_raw <- read_csv("data/tc_wos_data.csv")
+```
+
+## Data preparation 
+
+Let's take a quick look at the data and clean up any issues. Some questions we might answer:
+
+* How many rows and columns are in each dataset?
+* What do the rows and columns correspond to?
+
+```{r}
+# shows dimensions (number of rows and columns)
+dim(tcq_data_raw) 
+dim(tc_data_raw)
+
+glimpse(tcq_data_raw)
+glimpse(tc_data_raw)
+```
+
+### Cleaning names
+
+We'll start by cleaning up the names with the janitor package. The convention is lowercase and joined by underscores. 
+
+```{r}
+#install.packages("janitor")
+library(janitor)
+
+# use help("library_name") for a description
+help("janitor") 
+
+
+# Syntax method 1 (on TCQ)
+tcq_data_raw <- clean_names(tcq_data_raw)
+
+glimpse(tcq_data_raw)
+
+
+# Syntax method 2 (on TC)
+tc_data_raw <- tc_data_raw %>%
+  clean_names()
+
+glimpse(tc_data_raw)
+
+```
+
+### Select columns of interest
+
+Now we'll use a function from a library called dplyr to retain only the columns we want. Let's keep:
+
+* author_full_names
+* article_title
+* source_title
+* abstract
+* cited_references
+* cited_reference_count
+* publication_year
+* publication_type
+
+First on TCQ
+
+```{r}
+library(dplyr)
+
+# the select function from dplyr on TCQ data
+tcq_clean <- tcq_data_raw %>%
+  select(author_full_names,
+         article_title,
+         source_title,
+         abstract,
+         cited_references,
+         cited_reference_count,
+         publication_year,
+         publication_type)
+
+glimpse(tcq_clean)
+
+```
+
+Now on TC
+
+```{r}
+# the select function from dplyr on TCQ data
+tc_clean <- tc_data_raw %>%
+  select(author_full_names,
+         article_title,
+         source_title,
+         abstract,
+         cited_references,
+         cited_reference_count,
+         publication_year,
+         publication_type)
+
+glimpse(tc_clean)
+```
+
+### Combine the two sets
+
+```{r}
+
+both_data <- rbind(tcq_clean, tc_clean)
+
+dim(both_data)
+```
+
+## Exploring the data
+
+### Some quick ways to examine at a high level
+
+```{r}
+# provides overview of numeric variables
+summary(both_data) 
+
+
+# overview of target column
+summary(both_data$publication_year)
+
+# for each column, shows data types and first few observations
+str(both_data) 
+
+# shows first few rows
+head(both_data)
+
+# shows the first n rows
+
+head(both_data, n = 10)
+
+#shows last few rows
+tail(both_data)
+
+# creates a frequency table for a categorical variable 
+table(both_data$publication_year) 
+
+```
+
+### Visualize
+
+Let's create some exploratory visualizations. 
+
+#### Visualize the articles published by year
+
+```{r}
+# count of articles by year
+ggplot(both_data, aes(x = publication_year)) +
+  geom_bar() +
+  labs(title = "Articles per Year in TC and TCQ",
+       X = "Publication Year",
+       Y = "Number of Articles") +
+  theme_light()
+```
+
+#### Add another variable to the display
+
+```{r}
+# count of articles by year, by journal
+ggplot(both_data, aes(x = publication_year, fill = source_title)) +
+  geom_bar() +
+  labs(title = "Articles per Year in TC and TCQ",
+       X = "Publication Year",
+       Y = "Number of Articles") +
+  theme_light()
+```
+
+#### Create two displays using facet wrap
+
+```{r}
+# count of articles by year, by journal
+ggplot(both_data, aes(x = publication_year)) +
+  geom_bar() +
+  labs(title = "Articles per Year in TC and TCQ",
+       X = "Publication Year",
+       Y = "Number of Articles") +
+   facet_wrap(~ source_title, ncol = 2) # Change ncol as needed
+ 
+```
+
+#### Spice things up with a theme from ggthemes
+
+Check out this [ggthemes gallery](https://yutannihilation.github.io/allYourFigureAreBelongToUs/ggthemes/)
+
+```{r}
+#install.packages("ggthemes")
+library(ggthemes)
+
+# count of articles by year, by journal
+ggplot(both_data, aes(x = publication_year)) +
+  geom_bar() +
+  labs(title = "Articles per Year in TC and TCQ",
+       X = "Publication Year",
+       Y = "Number of Articles") +
+   facet_wrap(~ source_title, ncol = 1) +
+  theme_economist()
+```
+
+
+```{r}
+# count of articles by year, by journal
+year_plot <- ggplot(both_data, aes(x = publication_year)) +
+  geom_bar() +
+  labs(title = "Articles per Year in TC and TCQ",
+       X = "Publication Year",
+       Y = "Number of Articles") +
+   facet_wrap(~ source_title, ncol = 1) +
+  theme_economist_white()
+
+year_plot
+```
+
+#### Add labels above the bars
+
+```{r}
+# add labels above the bars
+year_plot <- year_plot +
+  geom_text(stat = 'count', aes(label = after_stat(count)), vjust = -0.5, size = 4)
+
+year_plot
+```
+
+#### Save the chart
+
+```{r}
+help(ggsave)
+ggsave("plots/articles_barplot.png", 
+       plot = year_plot, 
+       width = 8, 
+       height = 6, 
+       dpi = 300,
+       bg = NULL)
+```
+
+#### Save our dataset
+
+```{r}
+# save as csv
+
+write.csv(both_data, "data_out/both_data.csv")
+
+save(both_data, file = "data_out/both_data.RData")
+
+```
+
+## What about other journals?
+
+Gather and add to our visuals all articles published after 2005 from [Web of Science](https://www.webofscience.com/wos/woscc/basic-search) in these journals:
+
+* Journal of Business and Technical Communication
+* Written Communication
+
